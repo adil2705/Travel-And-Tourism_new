@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
+    <!-- Razorpay Checkout Script -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+    <title>Payment</title>
+  </head>
+  <style type="text/css">
+    body {
+        background: #f5f5f5;
+    }
+
+    .rounded {
+        border-radius: 1rem;
+    }
+
+    .nav-pills .nav-link {
+        color: #555;
+    }
+
+    .nav-pills .nav-link.active {
+        color: white;
+    }
+
+    input[type="radio"] {
+        margin-right: 5px;
+    }
+
+    .bold {
+        font-weight: bold;
+    }
+  </style>
+  <body>
+    <div class="alert alert-primary" role="alert">
+      <center>
+        <h3>Paying to {{travel}}</h3>
+        {% for ve in v %}
+          <h4>Total Amount: {{ve.fare}} /-</h4>
+        {% endfor %}
+      </center>
+    </div>
+    <div class="container py-5">
+      <!-- For demo purpose -->
+      <div class="row mb-4">
+        <div class="col-lg-8 mx-auto text-center">
+            <h1 class="display-6">Payment</h1>
+        </div>
+      </div> <!-- End -->
+
+      <button id="pay-button" class="center btn btn-primary">Pay Now</button>
+
+      <!-- Optional JavaScript -->
+      <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+      <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+      <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+      <script type="text/javascript">
+        document.getElementById('pay-button').onclick = async function () {
+            try {
+                // Static fare value, replace with your desired amount
+                const fare = 500;  // Static fare amount in INR (example: 500 INR)
+                console.log('Fare:', fare);  // Debugging the fare value
+    
+                const response = await fetch("{% url 'create_order' %}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": "{{ csrf_token }}"
+                    },
+                    body: JSON.stringify({ amount: fare }),
+                });
+    
+                // Check if response is ok and log it
+                console.log('Response:', response);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Error:', errorData);  // Log the error from the backend
+                    alert(`Error: ${errorData.error}`);
+                    return;
+                }
+    
+                const { order_id, key_id } = await response.json();
+    
+                const options = {
+                    key: key_id,
+                    amount: fare * 100,  // Razorpay expects the amount in paise (multiply by 100)
+                    currency: "INR",
+                    order_id: order_id,
+                    handler: function (response) {
+                        alert(`Payment Successful: ${response.razorpay_payment_id}`);
+                        window.location.href = "{% url 'payment_success' %}";
+                    },
+                    prefill: {
+                        name: "{{ user_name }}",  // You can pass dynamic user information here
+                        email: "{{ user_email }}",
+                        contact: "{{ user_contact }}"
+                    },
+                    theme: { color: "#3399cc" }
+                };
+    
+                const razorpay = new Razorpay(options);
+                razorpay.open();
+            } catch (error) {
+                alert("Payment initiation failed. Please try again.");
+                console.error('Error during payment initiation:', error);
+            }
+        };
+      </script>
+  </body>
+</html>

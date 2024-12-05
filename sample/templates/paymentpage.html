@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" crossorigin="anonymous">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <title>Payment</title>
+</head>
+<body>
+  <div class="alert alert-primary text-center">
+    <h3>Paying for Flight: {{ f }}</h3>
+    {% for flight in flight %}
+    <h4>Total Amount: {{ fare }} INR</h4>
+    {% endfor %}
+  </div>
+
+  <div class="container py-5">
+    <div class="row mb-4">
+      <div class="col-lg-8 mx-auto text-center">
+        <h1 class="display-6">Payment</h1>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-6 mx-auto">
+        <button id="pay-button" class="btn btn-primary btn-block shadow-sm">Pay Now</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('pay-button').onclick = async function () {
+      try {
+          const fare = {{ fare|safe }};
+          const response = await fetch("{% url 'create_order' %}", {
+              method: "POST",
+              headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRFToken": "{{ csrf_token }}"
+              },
+              body: JSON.stringify({ amount: fare }),
+          });
+
+          if (!response.ok) {
+              const errorData = await response.json();
+              alert(`Error: ${errorData.error}`);
+              return;
+          }
+
+          const { order_id, key_id } = await response.json();
+          const options = {
+              key: key_id,
+              amount: fare * 100,  // Razorpay expects the amount in paise
+              currency: "INR",
+              order_id: order_id,
+              handler: function (response) {
+                  alert(`Payment Successful: ${response.razorpay_payment_id}`);
+                  window.location.href = "{% url 'payment_success' %}";
+              },
+              prefill: {
+                  name: "Your Name",
+                  email: "email@example.com",
+                  contact: "9999999999"
+              },
+              theme: { color: "#3399cc" }
+          };
+
+          const razorpay = new Razorpay(options);
+          razorpay.open();
+      } catch (error) {
+          alert("Payment initiation failed. Please try again.");
+          console.error(error);
+      }
+    };
+  </script>
+</body>
+</html>
